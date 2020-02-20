@@ -15,7 +15,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Cell {
     visited: bool,
-    walls: u8,
+    walls: [bool; 4],
 }
 
 #[wasm_bindgen]
@@ -25,33 +25,48 @@ pub struct Maze {
     height: u32,
     cells: Vec<Cell>,
     stack: Vec<usize>,
+    walls: Vec<u8>,
     next: usize,
+    visited: u32,
 }
 
 #[wasm_bindgen]
 impl Maze {
     // Creates a new Maze with default settings
     pub fn new() -> Maze {
-        let width: u32 = 5;
-        let height: u32 = 5;
+        let width: u32 = 10;
+        let height: u32 = 10;
         let mut cells: Vec<Cell> = Vec::new();
-        let stack: Vec<usize> = Vec::new();
+        let mut stack: Vec<usize> = Vec::new();
+        let walls: Vec<u8> = Vec::new();
         let next = 0;
+        let visited = 0;
 
-        for _v in 0..width * height {
+        for v in 0..width * height {
+            if v == 0 {
+                let cell = Cell {
+                    visited: true,
+                    walls: [true, true, true, true],
+                };
+                cells.push(cell);
+                continue;
+            }
             let cell = Cell {
                 visited: false,
-                walls: 0,
+                walls: [true, true, true, true],
             };
             cells.push(cell);
         }
+        stack.push(0);
 
         Maze {
             width,
             height,
             cells,
             stack,
+            walls,
             next,
+            visited,
         }
     }
 
@@ -77,20 +92,24 @@ impl Maze {
 
     //Generate a maze
     pub fn gen_maze(&mut self) {
-        if self.get_visited_count() < 25 {
-            let next_result = self.get_unvisited(self.next);
-            let has_next = next_result.is_ok();
-            self.cells[self.next].visited = true;
+        if self.visited == (self.width * self.height)-1{
+            self.cells[self.next].visited=true;
+            return;
+        }
 
-            if has_next {
-                let next = next_result.ok().unwrap();
-                self.set_walls(self.next, next);
-                self.next = next;
-                self.stack.push(next);
-            } else if !has_next && self.get_visited_count() < 25 {
-                self.stack.pop();
-                self.next = *self.stack.last().unwrap();
-            }
+        let next_result = self.get_unvisited(self.next);
+        let has_next = next_result.is_ok();
+        self.cells[self.next].visited=true;
+
+        if has_next {
+            let next = next_result.ok().unwrap();
+            self.visited+=1;
+            self.set_walls(self.next, next);
+            self.next = next;
+            self.stack.push(next);
+        } else if !has_next {
+            self.stack.pop();
+            self.next = *self.stack.last().unwrap();
         }
     }
 
@@ -119,44 +138,29 @@ impl Maze {
     }
 
     fn set_walls(&mut self, current: usize, next: usize) {
-        if (current - self.width as usize) == next {
-            self.cells[current].walls |= 1;
-            self.cells[next].walls |= 4;
-        } else if (current - 1) == next {
-            self.cells[current].walls |= 8;
-            self.cells[next].walls |= 2;
-        } else if (current + 1) == next {
-            self.cells[current].walls |= 2;
-            self.cells[next].walls |=8;
-        } else if (current + self.width as usize) == next {
-            self.cells[current].walls |= 4;
-            self.cells[next].walls |= 1;
+        if next - current == 1 {
+            self.cells[current].walls[1] = false;
+            self.cells[next].walls[3] = false;
+        } else if next as i32 - current as i32 == -1 {
+            self.cells[current].walls[3] = false;
+            self.cells[next].walls[1] = false;
         }
-    }
 
-    pub fn get_visited_count(&self) -> usize {
-        self.cells
-            .clone()
-            .iter()
-            .filter(|&e| e.visited == true)
-            .collect::<Vec<&Cell>>()
-            .len()
-    }
-
-    pub fn get_next_visited(&self) -> usize {
-        self.next
-    }
-
-    pub fn has_next(&self) -> usize {
-        let next = self.get_unvisited(self.next);
-        if next.is_ok() {
-            return next.ok().unwrap();
+        if next - current == self.width as usize {
+            self.cells[current].walls[2] = false;
+            self.cells[next].walls[0] = false;
+        } else if next as i32 - current as i32 == -1 * self.width as i32 {
+            self.cells[current].walls[0] = false;
+            self.cells[next].walls[2] = false
         }
-        return 0;
     }
 
     pub fn render(&self) -> String {
         self.to_string()
+    }
+
+    pub fn get_visited(&self) -> u32 {
+        self.visited
     }
 }
 
