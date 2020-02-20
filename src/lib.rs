@@ -34,8 +34,8 @@ pub struct Maze {
 impl Maze {
     // Creates a new Maze with default settings
     pub fn new() -> Maze {
-        let width: u32 = 10;
-        let height: u32 = 10;
+        let width: u32 = 25;
+        let height: u32 = 25;
         let mut cells: Vec<Cell> = Vec::new();
         let mut stack: Vec<usize> = Vec::new();
         let walls: Vec<u8> = Vec::new();
@@ -83,6 +83,11 @@ impl Maze {
     //Maze height in cells
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    // Currently active cell index
+    pub fn get_head(&self) ->usize{
+        self.next
     }
 
     //Gets the index of the linear array via given row and column
@@ -157,10 +162,6 @@ impl Maze {
 
     pub fn render(&self) -> String {
         self.to_string()
-    }
-
-    pub fn get_visited(&self) -> u32 {
-        self.visited
     }
 }
 
